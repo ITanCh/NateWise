@@ -3,8 +3,6 @@ package com.nata.wise.state;
 import java.io.File;
 import java.io.IOException;
 
-import com.android.ddmlib.AndroidDebugBridge;
-import com.android.ddmlib.IDevice;
 import com.nata.wise.cmdtool.GetAdb;
 import com.nata.wise.cmdtool.ProcRunner;
 
@@ -14,11 +12,15 @@ public class DumpUI {
 //	String outPath=null;
 //	File adbFile=null;
 	
-//	public static void main(String[] args){
-//		String adb="/Users/Tianchi/Tool/sdk/platform-tools/adb";
-//		String out="/Users/Tianchi/AppTest/dump";
-//		new DumpUI(adb, out).startDump();
-//	}
+	public static void main(String[] args){
+		String adb="/Users/Tianchi/Tool/sdk/platform-tools/adb";
+		String out="/Users/Tianchi/AppTest/dump";
+		File outFile=new File(out);
+		outFile.mkdirs();
+		File xmlDumpFile=new File(outFile,"dump.xml");
+		GetAdb.setAdbFile(adb);
+		DumpUI.dumpThisDevice("0093e1a0ce9a2fd0", xmlDumpFile);
+	}
 //	
 //	public DumpUI(String adbP,String outP){
 //		adbPath=adbP;

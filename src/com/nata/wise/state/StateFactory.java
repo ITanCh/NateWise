@@ -12,8 +12,19 @@ public class StateFactory {
 
 	private static XMLParser mXmlParser = new XMLParser();
 
-	public static State createState(String serial, File out) {
+	/**
+	 * create current state
+	 * 
+	 * @param serial
+	 * @param out
+	 * @return state
+	 */
+	public static State createState(String serial) {
 
+		File out=new File("dump");
+		out=new File(out,serial);
+
+		out.mkdirs();
 		if (!out.exists()) {
 			System.out.println("error: out file not exist!");
 			return null;
@@ -32,7 +43,7 @@ public class StateFactory {
 		NodeList nodeList = mXmlParser.startParser(xmlDumpFile);
 
 		PkgAct lPkgAct = getCurrentPkgAct(serial);
-		State lState = new State(lPkgAct, nodeList, 1);
+		State lState = new State(lPkgAct, nodeList);
 
 		return lState;
 	}
@@ -83,7 +94,7 @@ public class StateFactory {
 		if(!outFile.exists())
 			outFile.mkdirs();
 		
-		State mState=createState("0093e1a0ce9a2fd0", outFile);
+		State mState=createState("0093e1a0ce9a2fd0");
 		System.out.println(mState.toString());
 	}
 }

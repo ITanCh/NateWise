@@ -22,14 +22,12 @@ public class ClickAction extends BasicAction {
 		try {
 			retCode = procRunner.run(30000);
 		} catch (IOException e) {
-			System.out.println("Failed to detect device");
+			System.out.println("Failed to tap device");
 			e.printStackTrace();
 			return;
 		}
 		if (retCode != 0) {
-			System.out.println("No device or multiple devices connected. "
-					+ "Use ANDROID_SERIAL environment variable "
-					+ "if you have multiple devices");
+			System.out.println("tap error: \n"+procRunner.getOutputBlob());
 			return;
 		}
 	}
@@ -40,19 +38,25 @@ public class ClickAction extends BasicAction {
 	}
 
 	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + x;
+		result = prime * result + y;
+		return result;
+	}
+
+	@Override
 	public boolean equals(Object sa) {
-		if (sa != null && sa instanceof ClickAction) {
+		if(sa==null)return false;
+		if(sa==this)return true;
+		
+		if (sa instanceof ClickAction) {
 			ClickAction lSmallAction = (ClickAction) sa;
 			if (x == lSmallAction.x && y == lSmallAction.y)
 				return true;
 		}
 		return false;
 	}
-
-	@Override
-	public int hashCode() {
-		int result = x * 31 + y * 7 + x * y;
-		return result;
-	}
-
+	
 }
