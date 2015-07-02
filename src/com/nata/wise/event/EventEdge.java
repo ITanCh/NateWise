@@ -48,4 +48,12 @@ public class EventEdge {
 		}
 		return s;
 	}
+	
+	public String toCommand(String serial){
+		String s="";
+		for(BasicAction a:actions){
+			s+=a.toCommand(serial)+"\n";
+		}
+		return s;
+	}
 }

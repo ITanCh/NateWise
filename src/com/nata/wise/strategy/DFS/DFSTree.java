@@ -1,19 +1,17 @@
-package com.nata.wise.strategy;
+package com.nata.wise.strategy.DFS;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Stack;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import com.nata.wise.cmdtool.GetAdb;
 import com.nata.wise.event.BasicAction;
 import com.nata.wise.event.EventEdge;
+import com.nata.wise.state.PkgAct;
 import com.nata.wise.state.State;
 import com.nata.wise.state.StateFactory;
 
@@ -30,9 +28,14 @@ public class DFSTree {
 	private String actName;
 	private File imageFile;
 	private File modelFile;
+	private File reappearFile;
+
+	private File outFile;
 
 	private int nodeCount = 0;
 	ExecutorService pool = Executors.newCachedThreadPool();
+
+	private boolean flag = true;
 
 	public DFSTree(String s, String pn, String act, String out) {
 
@@ -40,33 +43,57 @@ public class DFSTree {
 		pkgName = pn;
 		actName = act;
 
-		File outFile = new File(out);
+		outFile = new File(out);
 		outFile = new File(outFile, s);
+
 		imageFile = new File(outFile, "image");
 		modelFile = new File(outFile, "model");
+		reappearFile = new File(outFile, "reappear");
+
 		imageFile.mkdirs();
 		modelFile.mkdirs();
-		if (!imageFile.exists() || !modelFile.exists()) {
+		reappearFile.mkdirs();
+		if (!outFile.exists() || !imageFile.exists() || !modelFile.exists()
+				|| !reappearFile.exists()) {
 			System.err.println("error: cannot create outfile in device: " + s);
+			flag = false;
 		}
 
+		// GetAdb.sentKey(serial, GetAdb.KEYCODE_POWER);
+		// GetAdb.sentKey(serial, GetAdb.KEYCODE_UNLOCK);
 		startApp();
-		wait(2000);
+		wait(4000);
 
 		rootState = StateFactory.createState(s);
+		if (rootState == null) {
+			System.err.println("Cannot create app in :" + serial);
+			flag = false;
+			return;
+		}
+
+		PkgAct pa = rootState.getPkgAct();
+		if (!(pa.getPkgName().equals(pkgName))) {
+			System.err.println("Cannot start app in :" + serial);
+			flag = false;
+			return;
+		}
 		currentNode = rootState;
 		addNode(rootState);
-
+		System.out.println(rootState.toString());
 	}
 
 	private int classifyNode(State node) {
-		String lPkg = node.getPkgAct().getPkgName();
+		PkgAct lPkg = node.getPkgAct();
 		int k = State.NORMAL;
 
 		// out of this app
-		if (!lPkg.equals(pkgName)) {
+		if (!lPkg.getPkgName().equals(pkgName)) {
 			node.setKind(State.OUT);
 			k = State.OUT;
+		} else if (lPkg.getActName().equals("Unknow")) {
+			// error
+			node.setKind(State.ERROR);
+			k = State.ERROR;
 		} else {
 			// nothing change
 			if (currentNode != null && currentNode.equals(node)) {
@@ -81,8 +108,10 @@ public class DFSTree {
 	}
 
 	private void addNode(State node) {
+
+		// get screen shot
 		node.setIndex(nodeCount);
-		File shotFile = new File(imageFile, nodeCount + ".png");
+		final File shotFile = new File(imageFile, nodeCount + ".png");
 		pool.execute(new Thread() {
 			@Override
 			public void run() {
@@ -122,15 +151,16 @@ public class DFSTree {
 
 			// attempt to one step back
 			if (edgesStack.size() > 2) {
-				GetAdb.back(serial);
-				wait(200);
+				GetAdb.sentKey(serial, GetAdb.KEYCODE_BACK);
+				wait(1000);
 			}
 
 			tempState = StateFactory.createState(serial);
+
 			if (currentNode.equals(tempState))
 				return true;
 
-			if (nodesStack.contains(tempState)) {
+			if (tempState != null && nodesStack.contains(tempState)) {
 				// this node is ancestor of current node
 				while (!nodesStack.isEmpty()
 						&& !nodesStack.peek().equals(tempState)) {
@@ -138,36 +168,52 @@ public class DFSTree {
 					edgesStack.pop();
 				}
 			} else {
-				startApp();
-				wait(2000);
+				restartApp();
 			}
 
 			while (!edgesStack.isEmpty()) {
 				EventEdge pe = edgesStack.pop();
 				pe.play(serial);
-				System.out.println("replay: " + pe.toString());
+				// System.out.println("replay: " + pe.toString());
 			}
 
 			tempState = StateFactory.createState(serial);
 			if (currentNode.equals(tempState))
 				return true;
 			else {
-				System.out.println("go to a wrong state!");
-				goBack();
+				System.err.println("go to a wrong state!");
+				return goBack();
 			}
 		}
-		return false;
+		return true;
 	}
 
 	private void startApp() {
 		GetAdb.startActivity(serial, pkgName + "/" + actName);
 	}
 
-	private void wait(int time) {
+	private void restartApp() {
+		startApp();
+		PkgAct rootPa = rootState.getPkgAct();
+		int count = 0;
+		while (true) {
+			wait(1000);
+			PkgAct pa = GetAdb.getCurrentPkgAct(serial);
+			if (rootPa.equals(pa))
+				break;
+			count++;
+			if (count > 10) {
+				System.err.println("Error: cannot start app!");
+				return;
+			}
+		}
+	}
+
+	public static void wait(int time) {
 		try {
 			Thread.sleep(time);
 		} catch (InterruptedException e) {
-			System.out.println("Cannot sleep...");
+			System.err.println("Cannot sleep...");
 			e.printStackTrace();
 		}
 	}
@@ -182,133 +228,63 @@ public class DFSTree {
 	}
 
 	private void saveTree() {
-		File treeFile = new File(modelFile, "treemodel.json");
-		File nodesFile = new File(modelFile, "nodes.xml");
+		final File treeFile = new File(modelFile, "treemodel.json");
+		final File nodesFile = new File(modelFile, "nodes.xml");
+		final File actnetFile = new File(modelFile, "actnet.jsonp");
+
 		try {
 			treeFile.createNewFile();
 			nodesFile.createNewFile();
+			actnetFile.createNewFile();
 		} catch (IOException e) {
-			System.out.println("cannot create tree model file!");
+			System.err.println("cannot create tree model file!");
 			e.printStackTrace();
 		}
 
-		saveTreeModel(treeFile);
-		saveNodes(nodesFile);
-	}
-
-	/**
-	 * save the tree struct in the file
-	 * 
-	 * @param f
-	 */
-	private void saveTreeModel(File f) {
-		try {
-			BufferedWriter out = new BufferedWriter(new FileWriter(f, false));
-			// Ggson gson = new Ggson();
-			// gson.toJson(rootNode, out);
-			printTree(out, rootState, null);
-			out.flush();
-			out.close();
-		} catch (IOException e) {
-			System.out.println("Write tree error!");
-			e.printStackTrace();
-		}
-
-	}
-
-	/**
-	 * print tree
-	 * 
-	 * @param out
-	 * @param node
-	 * @param parent
-	 * @throws IOException
-	 */
-	private void printTree(BufferedWriter out, State node, State parent)
-			throws IOException {
-		if (node == null)
-			return;
-		out.write("{");
-		out.newLine();
-		out.write("\"name\": \"" + node.getIndex() + "\",");
-
-		out.newLine();
-		if (parent != null)
-			out.write("\"parent\": \"" + parent.getIndex() + "\"");
-		else {
-			out.write("\"parent\": \"null\"");
-		}
-
-		ArrayList<EventEdge> edges = node.getOutEdges();
-		int size = edges.size();
-		if (size > 0) {
-			out.write(",");
-			out.newLine();
-			out.write("\"children\": [");
-			out.newLine();
-
-			int i = 0;
-			for (EventEdge edge : edges) {
-
-				printTree(out, edge.getToState(), node);
-				i++;
-				if (i != size) {
-					out.write(",");
-					out.newLine();
-				}
+		pool.execute(new Thread() {
+			@Override
+			public void run() {
+				TreeWeb.saveTreeModel(treeFile, rootState);
 			}
-			out.newLine();
-			out.write("]");
-		}
-		out.newLine();
-		out.write("}");
-	}
+		});
 
-	/**
-	 * save node information in file
-	 * 
-	 * @param f
-	 */
-	public void saveNodes(File f) {
-		assert f != null;
-		try {
-			BufferedWriter out = new BufferedWriter(new FileWriter(f, false));
-			String t1 = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>";
-			out.write(t1);
-			out.newLine();
-			out.write("<catalog>");
-			out.newLine();
-
-			for (State vn : nodes) {
-				out.write("<node>");
-				out.newLine();
-
-				out.write("<title>" + vn.getPkgAct().getActName() + "</title>");
-				out.newLine();
-				out.write("<view>" + vn.getKind() + "</view>");
-				out.newLine();
-				out.write("<action>" + vn.getActionsSize() + "</action>");
-				out.newLine();
-
-				EventEdge tempEdge = vn.getFromEdge();
-				if (tempEdge != null)
-					out.write("<edge>" + vn.getFromEdge().toString()
-							+ "</edge>");
-				else
-					out.write("<edge>null</edge>");
-				out.newLine();
-
-				out.write("</node>");
-				out.newLine();
+		pool.execute(new Thread() {
+			@Override
+			public void run() {
+				TreeWeb.saveNodes(nodesFile, nodes);
 			}
+		});
 
-			out.write("</catalog>");
-			out.flush();
-			out.close();
-		} catch (IOException e) {
-			System.out.println("Write nodes error!");
-			e.printStackTrace();
-		}
+		pool.execute(new Thread() {
+			@Override
+			public void run() {
+				TreeWeb.saveActnet(actnetFile, nodes);
+			}
+		});
+
+		pool.execute(new Thread() {
+			@Override
+			public void run() {
+				TreeWeb.saveCase(reappearFile, nodes, serial, pkgName + "/"
+						+ actName);
+			}
+		});
+
+		pool.execute(new Thread() {
+			@Override
+			public void run() {
+				TreeWeb.saveActLaunch(reappearFile, nodes, serial, pkgName
+						+ "/" + actName);
+			}
+		});
+
+		pool.execute(new Thread() {
+			@Override
+			public void run() {
+				TreeWeb.moveWeb(outFile);
+			}
+		});
+
 	}
 
 	/**
@@ -316,18 +292,37 @@ public class DFSTree {
 	 */
 	public void startTrace() {
 
+		if (!flag)
+			return;
+
 		// 直到回到根节点，切节点没有可以再出发的事件
-		while (!(currentNode.getFromEdge() == null && !currentNode.isNotOver())) {
+		while (flag
+				&& !(currentNode.getFromEdge() == null && !currentNode
+						.isNotOver())) {
+
+//			if (nodes.size() > 20)
+//				break;
+
 			// 执行
 			BasicAction tempAction = perfromAction();
 			if (tempAction == null) {
-				goBack();
+				flag = goBack();
 				continue;
 			}
 
 			wait(500);
 			// 状态
 			State tempNode = StateFactory.createState(serial);
+			if (tempNode == null) {
+				tempNode = new State(new PkgAct("Unknow", "Unknow"), null);
+				System.out.println("Unknow node");
+				currentActions.add(tempAction);
+				addNode(tempNode);
+				currentNode = tempNode;
+				flag = goBack();
+				continue;
+			}
+
 			int kind = classifyNode(tempNode);
 
 			switch (kind) {
@@ -338,7 +333,7 @@ public class DFSTree {
 				currentActions.add(tempAction);
 				addNode(tempNode);
 				currentNode = tempNode;
-				goBack();
+				flag = goBack();
 				break;
 			case State.SAME:
 				System.out.println("same node");
@@ -348,18 +343,31 @@ public class DFSTree {
 				addNode(tempNode);
 				currentNode = tempNode;
 				System.out.println("new node");
-				System.out.println(tempNode.toString());
+				// System.out.println(tempNode.toString());
 				break;
 			}
 		}
 
 		saveTree();
+
+		pool.shutdown();
+		try {
+			pool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+		} catch (InterruptedException e) {
+			System.err.println("pool finish error!");
+			e.printStackTrace();
+		}
+		System.out.println("Device: " + serial + " DFS test End!");
 	}
 
 	public static void main(String[] args) {
 
-		String pkg = "com.cvicse.zhnt";
-		String act = "com.cvicse.zhnt.LoadingActivity";
+		// String pkg = "com.cvicse.zhnt";
+		// String act = "com.cvicse.zhnt.LoadingActivity";
+
+		String pkg = "com.cvicse.smarthome";
+		String act = "com.cvicse.smarthome.guide.SplashActivity";
+
 		String serial = "0093e1a0ce9a2fd0";
 
 		GetAdb.setAdbFile("/Users/Tianchi/Tool/sdk/platform-tools/adb");

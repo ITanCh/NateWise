@@ -8,5 +8,6 @@ public abstract class BasicAction {
 	
 	abstract public void perform(String serial);
 	//abstract public boolean equal(SmallAction sa);
+	abstract public String toCommand(String serial);
 	
 }

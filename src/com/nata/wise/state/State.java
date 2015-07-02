@@ -38,7 +38,10 @@ public class State {
 	}
 
 	private LinkedHashSet<BasicAction> getActions(NodeList nl) {
+				
 		LinkedHashSet<BasicAction> allActions = new LinkedHashSet<BasicAction>();
+		if(nl==null)return allActions;
+		
 		for (int i = 0; i < nl.getLength(); i++) {
 			Node node = nl.item(i);
 			if (node.getNodeType() == Node.ELEMENT_NODE) {
@@ -154,6 +157,11 @@ public class State {
 			float rate=((float)count)/((float)actions.size());
 			if(rate<0.5)	
 				return true;
+			else {
+				System.out.println(this.toString());
+				System.out.println("=== vs ===");
+				System.out.println(o.toString());
+			}
 		}
 
 		return false;

@@ -22,12 +22,12 @@ public class ClickAction extends BasicAction {
 		try {
 			retCode = procRunner.run(30000);
 		} catch (IOException e) {
-			System.out.println("Failed to tap device");
+			System.err.println("Failed to tap device");
 			e.printStackTrace();
 			return;
 		}
 		if (retCode != 0) {
-			System.out.println("tap error: \n"+procRunner.getOutputBlob());
+			System.err.println("tap error: \n"+procRunner.getOutputBlob());
 			return;
 		}
 	}
@@ -57,6 +57,12 @@ public class ClickAction extends BasicAction {
 				return true;
 		}
 		return false;
+	}
+
+	@Override
+	public String toCommand(String serial) {
+		String command="adb -s "+serial+" shell input tap "+x+" "+y;
+		return command;
 	}
 	
 }

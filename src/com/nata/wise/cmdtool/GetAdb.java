@@ -5,10 +5,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.android.ddmlib.AndroidDebugBridge;
+import com.nata.wise.state.PkgAct;
+import com.nata.wise.strategy.DFS.DFSTree;
 
 public class GetAdb {
 
 	private static String adbPath = "adb";
+
+	public static int KEYCODE_BACK = 4;
+	public static int KEYCODE_POWER = 26;
+	public static int KEYCODE_UNLOCK = 82; // menu
 
 	/**
 	 * reset adb path
@@ -76,12 +82,12 @@ public class GetAdb {
 		try {
 			retCode = procRunner.run(3000);
 		} catch (IOException e) {
-			System.out.println("Failed to start activity!");
+			System.err.println("Failed to start activity!");
 			e.printStackTrace();
 			return;
 		}
 		if (retCode != 0) {
-			System.out.println("start activity error!\n"
+			System.err.println("start activity error!\n"
 					+ procRunner.getOutputBlob());
 			return;
 		}
@@ -101,12 +107,12 @@ public class GetAdb {
 		try {
 			retCode = procRunner.run(3000);
 		} catch (IOException e) {
-			System.out.println("Failed to stop app");
+			System.err.println("Failed to stop app");
 			e.printStackTrace();
 			return;
 		}
 		if (retCode != 0) {
-			System.out
+			System.err
 					.println("stop app error!\n" + procRunner.getOutputBlob());
 			return;
 		}
@@ -126,19 +132,19 @@ public class GetAdb {
 		// ProcRunner procRunner = getAdbRunner(serial, "shell", "screencap",
 		// "-p", "|", "perl", "-pe", s2, s3, path);
 
-		String picPath = "/sdcard/screen.png";
+		String picPath = "/storage/emulated/legacy/screen.png";
 		ProcRunner procRunner = getAdbRunner(serial, "shell", "screencap",
 				"-p", picPath);
 		int retCode = 0;
 		try {
 			retCode = procRunner.run(5000);
 		} catch (IOException e) {
-			System.out.println("Failed to take screenshot");
+			System.err.println("Failed to take screenshot");
 			e.printStackTrace();
 			return;
 		}
 		if (retCode != 0) {
-			System.out.println("take screenshot error!\n"
+			System.err.println("take screenshot error!\n"
 					+ procRunner.getOutputBlob());
 			return;
 		}
@@ -148,12 +154,12 @@ public class GetAdb {
 		try {
 			retCode = procRunner.run(5000);
 		} catch (IOException e) {
-			System.out.println("Failed to pull screenshot");
+			System.err.println("Failed to pull screenshot");
 			e.printStackTrace();
 			return;
 		}
 		if (retCode != 0) {
-			System.out.println("pull screenshot error!\n"
+			System.err.println("pull screenshot error!\n"
 					+ procRunner.getOutputBlob());
 			return;
 		}
@@ -175,23 +181,86 @@ public class GetAdb {
 
 	}
 
-	public static void back(String serial) {
+	public static void sentKey(String serial, int num) {
 
 		ProcRunner procRunner = getAdbRunner(serial, "shell", "input",
-				"keyevent", "4");
+				"keyevent", num + "");
 
 		int retCode = 0;
 		try {
 			retCode = procRunner.run(5000);
 		} catch (IOException e) {
-			System.out.println("Failed to back!");
+			System.err.println("Failed to back!");
 			e.printStackTrace();
 			return;
 		}
 		if (retCode != 0) {
-			System.out.println("back error!\n" + procRunner.getOutputBlob());
+			System.err.println("back error!\n" + procRunner.getOutputBlob());
 			return;
 		}
+	}
+
+	/**
+	 * get current package name and activity name
+	 * 
+	 * @param serial
+	 * @return
+	 */
+	public static PkgAct getCurrentPkgAct(String serial) {
+
+		PkgAct pkgAct = null;
+		int getCount = 0;
+		while (pkgAct == null) {
+
+			DFSTree.wait(500);
+
+			int retCode = 0;
+			ProcRunner procRunner = GetAdb.getAdbRunner(serial, "shell",
+					"dumpsys window windows | grep -E 'mCurrentFocus'");
+			try {
+				retCode = procRunner.run(30000);
+			} catch (IOException e) {
+				System.err.println("Failed to get pkgact name");
+				e.printStackTrace();
+				return null;
+			}
+			if (retCode != 0) {
+				System.err.println("Error: cannot get pkgact name\n"
+						+ procRunner.getOutputBlob());
+				return null;
+			}
+
+			String result = procRunner.getOutputBlob();
+			String[] segments = result.split("\\{| |\\}|/");
+			String pkg = null;
+			String act = null;
+			for (int i = 0; i < segments.length; i++) {
+				if (segments[i].equals("u0")) {
+					if (i + 2 < segments.length) {
+						pkg = segments[i + 1];
+						act = segments[i + 2];
+					}
+				}
+			}
+
+			if (pkg == null || act == null) {
+				System.err.println("error: cannot get pkg and act name");
+				for (String seg : segments) {
+					System.out.println(seg);
+				}
+				pkgAct = null;
+			} else {
+				if (act.contains(" ") || act.contains("\n")
+						|| act.contains("\t"))
+					act = "Unkown";
+				pkgAct = new PkgAct(pkg, act);
+			}
+			getCount++;
+			if (getCount > 8)
+				break;
+		}
+
+		return pkgAct;
 	}
 
 	public static void main(String[] agrs) {

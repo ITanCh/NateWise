@@ -6,7 +6,6 @@ import java.io.IOException;
 import org.w3c.dom.NodeList;
 
 import com.nata.wise.cmdtool.GetAdb;
-import com.nata.wise.cmdtool.ProcRunner;
 
 public class StateFactory {
 
@@ -21,12 +20,16 @@ public class StateFactory {
 	 */
 	public static State createState(String serial) {
 
-		File out=new File("dump");
-		out=new File(out,serial);
+		PkgAct lPkgAct = GetAdb.getCurrentPkgAct(serial);
+		if(lPkgAct==null)
+			return null;
+		
+		File out = new File("dump");
+		out = new File(out, serial);
 
 		out.mkdirs();
 		if (!out.exists()) {
-			System.out.println("error: out file not exist!");
+			System.err.println("error: out file not exist!");
 			return null;
 		}
 
@@ -35,66 +38,37 @@ public class StateFactory {
 			try {
 				xmlDumpFile.createNewFile();
 			} catch (IOException e) {
-				System.out.println("dump.xml cannot create!");
+				System.err.println("dump.xml cannot create!");
 				e.printStackTrace();
 			}
 
-		DumpUI.dumpThisDevice(serial, xmlDumpFile);
-		NodeList nodeList = mXmlParser.startParser(xmlDumpFile);
+		// start get UI
+		int dumpCount = 0;
+		NodeList nodeList = null;
+		while (nodeList == null) {
+			DumpUI.dumpThisDevice(serial, xmlDumpFile);
+			nodeList = mXmlParser.startParser(xmlDumpFile);
+			dumpCount++;
+			if (dumpCount > 5) {
+				System.err.println("Dump error!");
+				return null;
+			}
+		}
 
-		PkgAct lPkgAct = getCurrentPkgAct(serial);
 		State lState = new State(lPkgAct, nodeList);
 
 		return lState;
 	}
 
-	private static PkgAct getCurrentPkgAct(String serial) {
-		int retCode = 0;
-		ProcRunner procRunner = GetAdb.getAdbRunner(serial, "shell",
-				"dumpsys window windows | grep -E 'mCurrentFocus'");
-		try {
-			retCode = procRunner.run(30000);
-		} catch (IOException e) {
-			System.out.println("Failed to detect device");
-			e.printStackTrace();
-			return null;
-		}
-		if (retCode != 0) {
-			System.out.println("No device or multiple devices connected. "
-					+ "Use ANDROID_SERIAL environment variable "
-					+ "if you have multiple devices");
-			return null;
-		}
 
-		String result = procRunner.getOutputBlob();
-		String[] segments = result.split("\\{| |\\}|/");
-		String pkg = null;
-		String act = null;
-		for (int i = 0; i < segments.length; i++) {
-			if (segments[i].equals("u0")) {
-				if (i + 2 < segments.length) {
-					pkg = segments[i + 1];
-					act = segments[i + 2];
-				}
-			}
-		}
-
-		if (pkg == null || act == null) {
-			System.err.println("error:cannot get pkg and act name");
-			return null;
-		}
-		PkgAct pkgAct = new PkgAct(pkg, act);
-		return pkgAct;
-	}
-
-	public static void main(String[] args){
-		String adb="/Users/Tianchi/Tool/sdk/platform-tools/adb";
+	public static void main(String[] args) {
+		String adb = "/Users/Tianchi/Tool/sdk/platform-tools/adb";
 		GetAdb.setAdbFile(adb);
-		File outFile=new File("/Users/Tianchi/AppTest/dump");
-		if(!outFile.exists())
+		File outFile = new File("/Users/Tianchi/AppTest/dump");
+		if (!outFile.exists())
 			outFile.mkdirs();
-		
-		State mState=createState("0093e1a0ce9a2fd0");
+
+		State mState = createState("0093e1a0ce9a2fd0");
 		System.out.println(mState.toString());
 	}
 }

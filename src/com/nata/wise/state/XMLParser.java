@@ -1,7 +1,6 @@
 package com.nata.wise.state;
 
 import java.io.File;
-import java.io.IOException;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -9,7 +8,6 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 public class XMLParser {
 
@@ -22,7 +20,7 @@ public class XMLParser {
 			dBuilder = dbFactory.newDocumentBuilder();
 		} catch (ParserConfigurationException e) {
 			e.printStackTrace();
-			System.out.println("error: cannot create DocumentBuilder!");
+			System.err.println("error: cannot create DocumentBuilder!");
 		}
 	}
 	
@@ -31,8 +29,8 @@ public class XMLParser {
 	 * @param path
 	 */
 	public NodeList startParser(File xmlFile) {
-		if (!xmlFile.exists()) {
-			System.out.println("error: xml file not exists!");
+		if (xmlFile==null||!xmlFile.exists()) {
+			System.err.println("error: xml file not exists!");
 			return null;
 		}
 
@@ -57,9 +55,9 @@ public class XMLParser {
 //				}
 //			}
 			
-		} catch (SAXException | IOException e) {
-			e.printStackTrace();
-			System.out.println("error: parser xml!");
+		} catch (Exception e) {
+			//e.printStackTrace();
+			System.err.println("error: parser xml!");
 		}
 		return null;
 	}

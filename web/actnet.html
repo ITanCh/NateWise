@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Activity Connection</title>
+<script type="text/javascript" src="js/v3.js"></script>
+<script src="model/actnet.jsonp"></script>
+<style type="text/css">
+/* No style rules here yet */
+text {
+	font: 10px sans-serif;
+	pointer-events: none;
+}
+
+circle {
+	opacity: 0.5;
+}
+</style>
+</head>
+<body>
+	<script type="text/javascript">
+		//Width and height
+		var w = 800;
+		var h = 600;
+
+		//Original data
+		var dataset = actnet;
+
+		//Initialize a default force layout, using the nodes and edges in dataset
+		var force = d3.layout.force().nodes(dataset.nodes).links(dataset.edges)
+				.size([ w, h ]).linkDistance([ 120 ]).charge([ -250 ]).start();
+
+		var colors = d3.scale.category10();
+
+		//Create SVG element
+		var svg = d3.select("body").append("svg").attr("width", w).attr(
+				"height", h);
+
+		// Controls the shift of the arrow head along the path
+		svg.append("marker").attr("id", "arrowhead").attr("refX", 6 + 7) 
+		.attr("refY", 2).attr("markerWidth", 6).attr("markerHeight", 4).attr(
+				"orient", "auto").append("path").attr("d", "M 0,0 V 4 L6,2 Z");
+
+		//Create edges as lines
+		var edges = svg.selectAll("line").data(dataset.edges).enter().append(
+				"line").attr("marker-end", "url(#arrowhead)").style("stroke",
+				"#ccc").style("stroke-opacity", 1);
+
+		var node = svg.selectAll(".node").data(dataset.nodes).enter().append(
+				"g").attr("class", "node").on("mouseover", mouseover).on(
+				"mouseout", mouseout).call(force.drag);
+
+		//Create nodes as circles
+		//var nodes = svg.selectAll("circle")
+		//.data(dataset.nodes)
+		//    .enter()
+		node.append("circle").attr("r", 10).style("fill", function(d, i) {
+			return colors(i);
+		}).attr("class", "circle");
+		//.call(force.drag);
+
+		//Add text
+		node.append("text").attr("x", 15).attr("dy", ".85em").text(function(d) {
+			console.log(d.name);
+			return d.name;
+		});
+
+		//Every time the simulation "ticks", this will be called
+		force.on("tick", function() {
+
+			edges.attr("x1", function(d) {
+				return d.source.x;
+			}).attr("y1", function(d) {
+				return d.source.y;
+			}).attr("x2", function(d) {
+				return d.target.x;
+			}).attr("y2", function(d) {
+				return d.target.y;
+			});
+
+			//node.attr("cx", function(d) { return d.x; })
+			//.attr("cy", function(d) { return d.y; });
+			node.attr("transform", function(d) {
+				return "translate(" + d.x + "," + d.y + ")";
+			});
+
+		});
+
+		function mouseover() {
+			d3.select(this).select("circle").transition().duration(750).attr(
+					"r", 20);
+		}
+
+		function mouseout() {
+			d3.select(this).select("circle").transition().duration(750).attr(
+					"r", 10);
+		}
+	</script>
+</body>
+</html>
+
