@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.android.ddmlib.AndroidDebugBridge;
+import com.nata.wise.WiseRunner;
 import com.nata.wise.state.PkgAct;
 import com.nata.wise.strategy.DFS.DFSTree;
 
@@ -14,7 +15,7 @@ public class GetAdb {
 
 	public static int KEYCODE_BACK = 4;
 	public static int KEYCODE_POWER = 26;
-	public static int KEYCODE_UNLOCK = 82; // menu
+	public static int KEYCODE_MENU = 82; // menu
 
 	/**
 	 * reset adb path
@@ -211,12 +212,15 @@ public class GetAdb {
 		PkgAct pkgAct = null;
 		int getCount = 0;
 		while (pkgAct == null) {
-
+			if(getCount++>10){
+				System.err.print("Cannot get Current PkgAct");
+				break;
+			}
 			DFSTree.wait(500);
 
 			int retCode = 0;
 			ProcRunner procRunner = GetAdb.getAdbRunner(serial, "shell",
-					"dumpsys window windows | grep -E 'mCurrentFocus'");
+					"dumpsys window windows");
 			try {
 				retCode = procRunner.run(30000);
 			} catch (IOException e) {
@@ -231,47 +235,52 @@ public class GetAdb {
 			}
 
 			String result = procRunner.getOutputBlob();
-			String[] segments = result.split("\\{| |\\}|/");
+			String[] lines=result.split("\n");
+			String targetLine=null;
+			String currentLine=null;
+			for(String line:lines){
+				if(line.contains("mFocusedApp"))
+					targetLine=line;
+				if(line.contains("mCurrentFocus"))
+					currentLine=line;
+			}
+			if(targetLine==null||currentLine==null)
+				continue;
+			
+			//System.out.println(result);
+			String[] segments = targetLine.split("\\{| |\\}|/|\n");
 			String pkg = null;
 			String act = null;
-			for (int i = 0; i < segments.length; i++) {
-				if (segments[i].equals("u0")) {
-					if (i + 2 < segments.length) {
-						pkg = segments[i + 1];
-						act = segments[i + 2];
-					}
-				}
+			if(segments.length==12){
+				pkg=segments[9];
+				act=segments[10];
+				if(act.startsWith("."))act=pkg+act;
+			}else if(segments.length==10){
+				pkg=segments[8];
+				act=segments[9];
+				if(act.startsWith("."))act=pkg+act;
 			}
-
-			if (pkg == null || act == null) {
-				System.err.println("error: cannot get pkg and act name");
-				for (String seg : segments) {
-					System.out.println(seg);
-				}
-				pkgAct = null;
-			} else {
-				if (act.contains(" ") || act.contains("\n")
-						|| act.contains("\t"))
-					act = "Unkown";
-				pkgAct = new PkgAct(pkg, act);
+			
+			if(currentLine.contains("Error")){
+				act="Error";
 			}
-			getCount++;
-			if (getCount > 8)
-				break;
+			if(act!=null&&pkg!=null)
+				pkgAct=new PkgAct(pkg, act);
 		}
-
+		//System.out.println(pkgAct.toString());
 		return pkgAct;
 	}
 
 	public static void main(String[] agrs) {
-		GetAdb.setAdbFile("/Users/Tianchi/Tool/sdk/platform-tools/adb");
 		String pkg = "com.cvicse.zhnt";
 		String act = "com.cvicse.zhnt.LoadingActivity";
 		String serial = "0093e1a0ce9a2fd0";
 		String path = "/Users/Tianchi/AppTest/dump";
+		GetAdb.setAdbFile("/Users/Tianchi/Tool/sdk/platform-tools/adb");
 		// startActivity("0093e1a0ce9a2fd0", pkg + "/" + act);
 		// stopApp(serial, pkg);
-		takeScreenShot(serial, path + "/shot.png");
+		//takeScreenShot(serial, path + "/shot.png");
+		getCurrentPkgAct("0093e1a0ce9a2fd0");
 	}
 
 }

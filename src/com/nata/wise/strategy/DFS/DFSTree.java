@@ -1,5 +1,6 @@
 package com.nata.wise.strategy.DFS;
 
+import java.awt.Menu;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import com.nata.wise.cmdtool.GetAdb;
 import com.nata.wise.event.BasicAction;
 import com.nata.wise.event.EventEdge;
+import com.nata.wise.event.MenuAction;
 import com.nata.wise.state.PkgAct;
 import com.nata.wise.state.State;
 import com.nata.wise.state.StateFactory;
@@ -45,6 +47,7 @@ public class DFSTree {
 
 		outFile = new File(out);
 		outFile = new File(outFile, s);
+		outFile.mkdirs();
 
 		imageFile = new File(outFile, "image");
 		modelFile = new File(outFile, "model");
@@ -65,14 +68,14 @@ public class DFSTree {
 		wait(4000);
 
 		rootState = StateFactory.createState(s);
-		if (rootState == null) {
+		String actString = rootState.getPkgAct().getActName();
+		String pkgString = rootState.getPkgAct().getPkgName();
+		if (actString.contains("Unknow") || actString.contains("Error")) {
 			System.err.println("Cannot create app in :" + serial);
 			flag = false;
 			return;
 		}
-
-		PkgAct pa = rootState.getPkgAct();
-		if (!(pa.getPkgName().equals(pkgName))) {
+		if (!(pkgString.equals(pkgName))) {
 			System.err.println("Cannot start app in :" + serial);
 			flag = false;
 			return;
@@ -84,27 +87,22 @@ public class DFSTree {
 
 	private int classifyNode(State node) {
 		PkgAct lPkg = node.getPkgAct();
-		int k = State.NORMAL;
-
+		String actString = lPkg.getActName();
+		String pkgString = lPkg.getPkgName();
 		// out of this app
-		if (!lPkg.getPkgName().equals(pkgName)) {
-			node.setKind(State.OUT);
-			k = State.OUT;
-		} else if (lPkg.getActName().equals("Unknow")) {
-			// error
+		if (actString.equals("Error") || actString.equals("Unknow")) {
 			node.setKind(State.ERROR);
-			k = State.ERROR;
+		}else if (!pkgString.equals(pkgName)) {
+			node.setKind(State.OUT);
 		} else {
 			// nothing change
 			if (currentNode != null && currentNode.equals(node)) {
-				return State.SAME;
-			}
-			if (nodes.contains(node)) {
+				node.setKind(State.SAME);
+			}else if (nodes.contains(node)) {
 				node.setKind(State.OLD);
-				k = State.OLD;
 			}
 		}
-		return k;
+		return node.getKind();
 	}
 
 	private void addNode(State node) {
@@ -167,6 +165,7 @@ public class DFSTree {
 					nodesStack.pop();
 					edgesStack.pop();
 				}
+				System.out.println("one step back");
 			} else {
 				restartApp();
 			}
@@ -231,11 +230,12 @@ public class DFSTree {
 		final File treeFile = new File(modelFile, "treemodel.json");
 		final File nodesFile = new File(modelFile, "nodes.xml");
 		final File actnetFile = new File(modelFile, "actnet.jsonp");
-
+		final File countFile = new File(modelFile, "count.xml");
 		try {
 			treeFile.createNewFile();
 			nodesFile.createNewFile();
 			actnetFile.createNewFile();
+			countFile.createNewFile();
 		} catch (IOException e) {
 			System.err.println("cannot create tree model file!");
 			e.printStackTrace();
@@ -285,6 +285,13 @@ public class DFSTree {
 			}
 		});
 
+		pool.execute(new Thread() {
+			@Override
+			public void run() {
+				TreeWeb.countNode(countFile, nodes);
+			}
+		});
+
 	}
 
 	/**
@@ -300,8 +307,8 @@ public class DFSTree {
 				&& !(currentNode.getFromEdge() == null && !currentNode
 						.isNotOver())) {
 
-//			if (nodes.size() > 20)
-//				break;
+			// if (nodes.size() > 20)
+			// break;
 
 			// 执行
 			BasicAction tempAction = perfromAction();
@@ -313,15 +320,6 @@ public class DFSTree {
 			wait(500);
 			// 状态
 			State tempNode = StateFactory.createState(serial);
-			if (tempNode == null) {
-				tempNode = new State(new PkgAct("Unknow", "Unknow"), null);
-				System.out.println("Unknow node");
-				currentActions.add(tempAction);
-				addNode(tempNode);
-				currentNode = tempNode;
-				flag = goBack();
-				continue;
-			}
 
 			int kind = classifyNode(tempNode);
 
@@ -343,7 +341,7 @@ public class DFSTree {
 				addNode(tempNode);
 				currentNode = tempNode;
 				System.out.println("new node");
-				// System.out.println(tempNode.toString());
+				System.out.println(tempNode.toString());
 				break;
 			}
 		}

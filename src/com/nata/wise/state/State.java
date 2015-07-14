@@ -11,6 +11,7 @@ import org.w3c.dom.NodeList;
 import com.nata.wise.event.BasicAction;
 import com.nata.wise.event.ClickAction;
 import com.nata.wise.event.EventEdge;
+import com.nata.wise.event.MenuAction;
 
 public class State {
 
@@ -38,10 +39,11 @@ public class State {
 	}
 
 	private LinkedHashSet<BasicAction> getActions(NodeList nl) {
-				
+
 		LinkedHashSet<BasicAction> allActions = new LinkedHashSet<BasicAction>();
-		if(nl==null)return allActions;
-		
+		if (nl == null)
+			return allActions;
+
 		for (int i = 0; i < nl.getLength(); i++) {
 			Node node = nl.item(i);
 			if (node.getNodeType() == Node.ELEMENT_NODE) {
@@ -55,10 +57,12 @@ public class State {
 					String clickable = eElement.getAttribute("clickable");
 					if (clickable.equals("true")) {
 						String bounds = eElement.getAttribute("bounds");
+						String id = eElement.getAttribute("resource-id");
+
 						// System.out.println(bounds);
 						String[] segs = bounds.split("\\[|\\]|,");
-						// for(String s:segs)
-						// System.out.println(s);
+//						 for(String s:segs)
+//						 System.out.println(s);
 						if (segs.length == 6) {
 							int x = Integer.parseInt(segs[1]) + 1;
 							int y = Integer.parseInt(segs[2]) + 1;
@@ -148,14 +152,14 @@ public class State {
 		State oState = (State) o;
 		if (mPkgAct.equals(oState.mPkgAct)
 				&& actions.size() == oState.actions.size()) {
-			int count=0;
+			int count = 0;
 			Iterator<BasicAction> it = oState.actions.iterator();
 			while (it.hasNext()) {
 				if (!actions.contains(it.next()))
 					count++;
 			}
-			float rate=((float)count)/((float)actions.size());
-			if(rate<0.5)	
+			float rate = ((float) count) / ((float) actions.size());
+			if (rate < 0.5)
 				return true;
 			else {
 				System.out.println(this.toString());
@@ -176,5 +180,11 @@ public class State {
 			result += ba.hashCode();
 		}
 		return result;
+	}
+
+	public void addAction(MenuAction menuAction) {
+		// TODO Auto-generated method stub
+		actions.add(menuAction);
+		it=actions.iterator();
 	}
 }

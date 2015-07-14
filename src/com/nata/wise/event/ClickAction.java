@@ -27,7 +27,7 @@ public class ClickAction extends BasicAction {
 			return;
 		}
 		if (retCode != 0) {
-			System.err.println("tap error: \n"+procRunner.getOutputBlob());
+			System.err.println("tap error: \n" + procRunner.getOutputBlob());
 			return;
 		}
 	}
@@ -48,9 +48,11 @@ public class ClickAction extends BasicAction {
 
 	@Override
 	public boolean equals(Object sa) {
-		if(sa==null)return false;
-		if(sa==this)return true;
-		
+		if (sa == null)
+			return false;
+		if (sa == this)
+			return true;
+
 		if (sa instanceof ClickAction) {
 			ClickAction lSmallAction = (ClickAction) sa;
 			if (x == lSmallAction.x && y == lSmallAction.y)
@@ -61,8 +63,8 @@ public class ClickAction extends BasicAction {
 
 	@Override
 	public String toCommand(String serial) {
-		String command="adb -s "+serial+" shell input tap "+x+" "+y;
+		String command = "adb -s " + serial + " shell input tap " + x + " " + y;
 		return command;
 	}
-	
+
 }

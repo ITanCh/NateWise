@@ -12,7 +12,7 @@ import com.nata.wise.strategy.DFS.DFSTree;
 public class WiseRunner {
 
 	private static ExecutorService pool = Executors.newCachedThreadPool();
-	
+	public static String hopePkg="";
 	/**
 	 * start test
 	 * 
@@ -23,6 +23,7 @@ public class WiseRunner {
 	 */
 	public static void startWise(final String pkgName, final String actName,
 			String adbPath, final String out) {
+		hopePkg=pkgName;
 		GetAdb.setAdbFile(adbPath);
 		AndroidDebugBridge adb = GetAdb.initAdb();
 
@@ -58,6 +59,11 @@ public class WiseRunner {
 //		String act = "com.cvicse.zhnt.LoadingActivity";
 //		String adbPath="/Users/Tianchi/Tool/sdk/platform-tools/adb";
 //		String outPath="/Users/Tianchi/AppTest/out";
+		if(args.length<4)
+		{
+			System.err.println("enter pkgName actName adbPaht outPaht");
+			return;
+		}
 		startWise(args[0], args[1], args[2], args[3]);
 //		startWise(pkg, act, adbPath, outPath);
 	}

@@ -21,16 +21,18 @@ public class StateFactory {
 	public static State createState(String serial) {
 
 		PkgAct lPkgAct = GetAdb.getCurrentPkgAct(serial);
-		if(lPkgAct==null)
-			return null;
-		
+		if (lPkgAct == null) {
+			lPkgAct = new PkgAct("Unknow", "Unknow");
+			return new State(lPkgAct, null);
+		}
+
 		File out = new File("dump");
 		out = new File(out, serial);
 
 		out.mkdirs();
 		if (!out.exists()) {
 			System.err.println("error: out file not exist!");
-			return null;
+			return new State(new PkgAct("Unknow", "Unknow"), null);
 		}
 
 		File xmlDumpFile = new File(out, "dump.xml");
@@ -51,7 +53,7 @@ public class StateFactory {
 			dumpCount++;
 			if (dumpCount > 5) {
 				System.err.println("Dump error!");
-				return null;
+				break;
 			}
 		}
 
@@ -59,7 +61,6 @@ public class StateFactory {
 
 		return lState;
 	}
-
 
 	public static void main(String[] args) {
 		String adb = "/Users/Tianchi/Tool/sdk/platform-tools/adb";

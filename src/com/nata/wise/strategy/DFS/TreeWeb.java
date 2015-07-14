@@ -13,11 +13,11 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Stack;
-import java.util.Vector;
+
+import javax.swing.plaf.basic.BasicScrollPaneUI.VSBChangeListener;
 
 import org.apache.commons.io.IOUtils;
 
-import com.google.common.collect.Multiset.Entry;
 import com.nata.wise.WiseRunner;
 import com.nata.wise.event.EventEdge;
 import com.nata.wise.state.State;
@@ -265,12 +265,14 @@ public class TreeWeb {
 				+ pkgact;
 
 		State preState = null;
+		int count = 0;
 		for (State node : nodes) {
 			if (node.equals(preState))
 				continue;
 			preState = node;
 			// find leaf nodes
 			if (node.getOutEdges().size() <= 0) {
+				count++;
 				File nodeFile = new File(caseFile, node.getIndex() + ".sh");
 				try {
 					nodeFile.createNewFile();
@@ -308,6 +310,7 @@ public class TreeWeb {
 				}
 			}
 		}
+		System.out.println("Test Case: " + count);
 
 	}
 
@@ -330,28 +333,28 @@ public class TreeWeb {
 		String startString = "adb -s " + serial + " shell am start -S -n "
 				+ pkgact;
 
-		Map<String, State> map=new HashMap<String,State>();
-		
-		//search shorter path to start this activity
+		Map<String, State> map = new HashMap<String, State>();
+
+		// search shorter path to start this activity
 		for (State node : nodes) {
-			int kind=node.getKind();
-			if(kind==node.NORMAL||kind==node.OLD){
-				String name=node.getPkgAct().getActName();
-				if(map.containsKey(name)){
-					State lState=map.get(name);
-					if(pathLength(node)<pathLength(lState)){
+			int kind = node.getKind();
+			if (kind == State.NORMAL || kind == State.OLD) {
+				String name = node.getPkgAct().getActName();
+				if (map.containsKey(name)) {
+					State lState = map.get(name);
+					if (pathLength(node) < pathLength(lState)) {
 						map.put(name, node);
 					}
-				}else{
+				} else {
 					map.put(name, node);
 				}
 			}
 		}
-		
-		for(String key:map.keySet()){
-			State node=map.get(key);
-			
-			String name=key.replace('.', '_');
+		System.out.println("Activity count: " + map.size());
+		for (String key : map.keySet()) {
+			State node = map.get(key);
+
+			String name = key.replace('.', '_');
 			File nodeFile = new File(actFile, name + ".sh");
 			try {
 				nodeFile.createNewFile();
@@ -388,21 +391,92 @@ public class TreeWeb {
 				e.printStackTrace();
 			}
 		}
-		
 
 	}
 
-	private static int pathLength(State state){
-		int len=0;
-		
-		while(state.getFromEdge()!=null)
-		{
+	private static int pathLength(State state) {
+		int len = 0;
+
+		while (state.getFromEdge() != null) {
 			len++;
-			state=state.getFromEdge().getFromState();
+			state = state.getFromEdge().getFromState();
 		}
 		return len;
 	}
-	
+
+	public static void countNode(File f, ArrayList<State> nodes) {
+		assert f != null;
+
+		try {
+			BufferedWriter out = new BufferedWriter(new FileWriter(f, false));
+			String t1 = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>";
+			out.write(t1);
+			out.newLine();
+			out.write("<count>");
+			out.newLine();
+
+			out.write("<error>");
+			out.newLine();
+			out.write("<mem>");
+			out.newLine();
+			
+			int countError=0;
+			int countNormal=0;
+			int countOut=0;
+			int countAll=0;
+			LinkedHashSet<String> set=new LinkedHashSet<>();
+			for (State vn : nodes) {
+				if(vn.getKind()==State.ERROR){
+					countError++;
+					out.write("<index>"+vn.getIndex()+"</index>");
+					out.newLine();
+				}else if(vn.getKind()==State.NORMAL){
+					set.add(vn.getPkgAct().getActName());
+					countNormal++;
+				}else if(vn.getKind()==State.OUT)
+					countOut++;
+			}
+			out.write("</mem>");
+			out.newLine();
+			
+			out.write("<num>"+countError+"</num>");
+			out.newLine();
+			out.write("</error>");
+			out.newLine();
+			
+			out.write("<actvity>");
+			out.newLine();
+			out.write("<num>"+set.size()+"</num>");
+			out.newLine();
+			
+			out.write("<mem>");
+			out.newLine();
+			Iterator<String> it=set.iterator();
+			while(it.hasNext()){
+				out.write("<name>"+it.next()+"</name>");
+				out.newLine();
+			}
+			out.write("</mem>");
+			out.newLine();
+			out.write("</actvity>");
+			out.newLine();
+			
+			out.write("<normal>"+countNormal+"</normal>");
+			out.newLine();
+			out.write("<out>"+countOut+"</out>");
+			out.newLine();
+			out.write("<all>"+nodes.size()+"</all>");
+			out.newLine();
+			
+			out.write("</count>");
+			out.flush();
+			out.close();
+		} catch (IOException e) {
+			System.err.println("Count node error!");
+			e.printStackTrace();
+		}
+	}
+
 	public static void main(String[] args) {
 		LinkedHashSet<Link> set = new LinkedHashSet<>();
 		TreeWeb tWeb = new TreeWeb();
