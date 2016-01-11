@@ -85,7 +85,7 @@ public class DumpUI {
 	 * @param serial
 	 * @param xmlDumpFile
 	 */
-	public static void dumpThisDevice(String serial,File xmlDumpFile) {
+	public static boolean dumpThisDevice(String serial,File xmlDumpFile) {
 
         int retCode = -1;
         String dumpPath="/storage/emulated/legacy/uidump.xml";
@@ -97,18 +97,18 @@ public class DumpUI {
 		} catch (IOException e) {
 			System.err.println("Failed to detect device");
 			e.printStackTrace();
-			return;
+			return false;
 		}
 		if (retCode != 0) {
 			System.err.println("No device or multiple devices connected. "
 					+ "Use ANDROID_SERIAL environment variable "
 					+ "if you have multiple devices");
-			return;
+			return false;
 		}
 		
 		if (procRunner.getOutputBlob().indexOf("No such file or directory") != -1) {
 			System.err.println("/system/bin/uiautomator not found on device");
-			return;
+			return false;
 		}
 		
 		procRunner = GetAdb.getAdbRunner(serial, "shell", "rm", dumpPath);
@@ -122,7 +122,7 @@ public class DumpUI {
 		} catch (IOException e) {
 			System.err.println("Failed to execute \"rm\" xml dump command.");
 			e.printStackTrace();
-			return;
+			return false;
 		}
 
 		procRunner = GetAdb.getAdbRunner(serial, "shell", "/system/bin/uiautomator",
@@ -137,7 +137,7 @@ public class DumpUI {
 		} catch (IOException e) {
 			System.err.println("Failed to execute dump command.");
 			e.printStackTrace();
-			return;
+			return false;
 		}
 		
 		procRunner = GetAdb.getAdbRunner(serial, "pull", dumpPath,
@@ -153,8 +153,10 @@ public class DumpUI {
 		} catch (IOException e) {
 			System.err.println("Failed to pull dump file.");
 			e.printStackTrace();
-			return;
+			return false;
 		}
+		
+		return true;
 	}
 
 }

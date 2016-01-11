@@ -64,8 +64,8 @@ public class State {
 //						 for(String s:segs)
 //						 System.out.println(s);
 						if (segs.length == 6) {
-							int x = Integer.parseInt(segs[1]) + 1;
-							int y = Integer.parseInt(segs[2]) + 1;
+							int x = (Integer.parseInt(segs[1]) + 1);
+							int y = (Integer.parseInt(segs[2]) + 1);
 							allActions.add(new ClickAction(x, y));
 						}
 					}
@@ -73,6 +73,7 @@ public class State {
 
 			}
 		}
+		allActions.add(new MenuAction());
 		return allActions;
 	}
 
@@ -152,6 +153,8 @@ public class State {
 		State oState = (State) o;
 		if (mPkgAct.equals(oState.mPkgAct)
 				&& actions.size() == oState.actions.size()) {
+			if(actions.size()==0)return true;
+			
 			int count = 0;
 			Iterator<BasicAction> it = oState.actions.iterator();
 			while (it.hasNext()) {

@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.android.ddmlib.AndroidDebugBridge;
-import com.nata.wise.WiseRunner;
 import com.nata.wise.state.PkgAct;
 import com.nata.wise.strategy.DFS.DFSTree;
 
@@ -212,7 +211,7 @@ public class GetAdb {
 		PkgAct pkgAct = null;
 		int getCount = 0;
 		while (pkgAct == null) {
-			if(getCount++>10){
+			if (getCount++ > 10) {
 				System.err.print("Cannot get Current PkgAct");
 				break;
 			}
@@ -235,37 +234,48 @@ public class GetAdb {
 			}
 
 			String result = procRunner.getOutputBlob();
-			String[] lines=result.split("\n");
-			String targetLine=null;
-			String currentLine=null;
-			for(String line:lines){
-				if(line.contains("mFocusedApp"))
-					targetLine=line;
-				if(line.contains("mCurrentFocus"))
-					currentLine=line;
+			String[] lines = result.split("\n");
+			String targetLine = null;
+			String currentLine = null;
+			for (String line : lines) {
+				if (line.contains("mFocusedApp"))
+					targetLine = line;
+				if (line.contains("mCurrentFocus"))
+					currentLine = line;
 			}
-			if(targetLine==null||currentLine==null)
+			if (targetLine == null || currentLine == null)
 				continue;
-			
-			//System.out.println(result);
-			String[] segments = targetLine.split("\\{| |\\}|/|\n");
+
+			// System.out.println(result);
+
 			String pkg = null;
 			String act = null;
-			if(segments.length==12){
-				pkg=segments[9];
-				act=segments[10];
-				if(act.startsWith("."))act=pkg+act;
-			}else if(segments.length==10){
-				pkg=segments[8];
-				act=segments[9];
-				if(act.startsWith("."))act=pkg+act;
+			if (currentLine.contains("Error")) {
+				act = "Error";
+			} else {
+				String[] segments = currentLine.split("\\{| |\\}|/|\n");
+				// for(String s:segments)System.out.println(s+"!");
+				if (segments.length == 7) {
+					pkg = segments[5];
+					act = segments[6];
+					if (act.startsWith("."))
+						act = pkg + act;
+				}
 			}
-			
-			if(currentLine.contains("Error")){
-				act="Error";
+			if (act == null || pkg == null) {
+				String[] segments = targetLine.split("\\{| |\\}|/|\n");
+				// for(String s:segments)System.out.println(s+"!");
+				if (segments.length == 12) {
+					pkg = segments[9];
+					if (act == null) {
+						act = segments[10];
+						if (act.startsWith("."))
+							act = pkg + act;
+					}
+				}
 			}
-			if(act!=null&&pkg!=null)
-				pkgAct=new PkgAct(pkg, act);
+			if (act != null && pkg != null)
+				pkgAct = new PkgAct(pkg, act);
 		}
 		//System.out.println(pkgAct.toString());
 		return pkgAct;
@@ -279,7 +289,7 @@ public class GetAdb {
 		GetAdb.setAdbFile("/Users/Tianchi/Tool/sdk/platform-tools/adb");
 		// startActivity("0093e1a0ce9a2fd0", pkg + "/" + act);
 		// stopApp(serial, pkg);
-		//takeScreenShot(serial, path + "/shot.png");
+		// takeScreenShot(serial, path + "/shot.png");
 		getCurrentPkgAct("0093e1a0ce9a2fd0");
 	}
 

@@ -7,6 +7,7 @@ import org.w3c.dom.NodeList;
 
 import com.nata.wise.cmdtool.GetAdb;
 
+
 public class StateFactory {
 
 	private static XMLParser mXmlParser = new XMLParser();
@@ -48,10 +49,11 @@ public class StateFactory {
 		int dumpCount = 0;
 		NodeList nodeList = null;
 		while (nodeList == null) {
-			DumpUI.dumpThisDevice(serial, xmlDumpFile);
-			nodeList = mXmlParser.startParser(xmlDumpFile);
+			boolean ret=DumpUI.dumpThisDevice(serial, xmlDumpFile);
+			if(ret)
+				nodeList = mXmlParser.startParser(xmlDumpFile);
 			dumpCount++;
-			if (dumpCount > 5) {
+			if (dumpCount > 3) {
 				System.err.println("Dump error!");
 				break;
 			}
