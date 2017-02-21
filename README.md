@@ -2,10 +2,10 @@
 ### tianchi  
 -------------
 
-###NataWise简介  
+### NataWise简介  
 NataWise是利用深度优先算法(DFS)对Android应用UI进行自动化探索测试的工具。该工具不依赖于Android Instrumentation工具，全程通过adb命令和UIautomator的相关的功能进行状态的获取和驱动。不需要对APP进行重签名等处理，但需要获得被测试应用的包名和启动Activity的名字。
 
-###NataWise使用方法  
+### NataWise使用方法  
 
 1. 运行环境：JAVA运行环境、android SDK(保证命令`adb devices`能够正确显示设备序号)。 
 
